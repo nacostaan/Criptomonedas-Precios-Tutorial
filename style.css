@@ -1,12 +1,82 @@
 #titulo {
+  text-align: center;
+  color: #333;
+  margin: 20px 0;
+}
 
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 20px;
+  margin: 20px auto;
+  max-width: 1600px;
+}
+
+.visualization-module {
+  flex: 1;
+  min-width: 300px;
+  max-width: 800px;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.visualization-module h2 {
+  text-align: center;
+  color: #444;
+  margin-bottom: 20px;
 }
 
 #descripcion {
-
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 20px;
 }
 
 #descripcion p {
-
+  line-height: 1.6;
+  color: #666;
+  margin-bottom: 15px;
 }
 
+#fecha-actual,
+#contador-datos,
+#fecha-actual-2,
+#contador-datos-2,
+.explicacion {
+  background-color: #2962ff;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  border-radius: 10px;
+  margin: 10px auto;
+  width: 50%;
+}
+
+.explicacion {
+  background-color: transparent;
+  color: #666;
+}
+
+#menuMonedas {
+  display: block;
+  margin: 20px auto;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  width: 200px;
+}
+
+.linea {
+  transition: all 0.3s ease;
+}
+
+#modulo2, #modulo4 {
+  background-color: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 20px;
+}

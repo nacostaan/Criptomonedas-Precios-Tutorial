@@ -1,115 +1,276 @@
 /**
- * Fuente de datos y modelado
+ * Configuración y variables globales
  */
+const formatoUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+let contadorDatos = 0;
+let contadorDatos2 = 0;
 
-// Conectammos nuestra aplicación al API de coincap.
-// Vamos a solicitar actualizaciones de precios para: bitcoin, ethereum, monero y litecoin.
-var preciosEndPoint = new WebSocket("wss://ws.coincap.io/prices?assets=bitcoin,ethereum,monero,litecoin");
+// Modelo de datos para ambas fuentes
+const crearModeloMonedas = () => ([
+  { nombre: 'bitcoin', precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: [] },
+  { nombre: 'ethereum', precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: [] },
+  { nombre: 'monero', precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: [] },
+  { nombre: 'litecoin', precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: [] },
+]);
 
-// Cuando una de las criptomonedas cambia de precio, ejecutamos la función procesarNuevoMensaje.
-preciosEndPoint.onmessage = procesarNuevoMensaje;
+const monedasCoinCap = crearModeloMonedas();
+const monedasBinance = crearModeloMonedas();
+
+// Configuración de la gráfica
+const configuracionGrafica = {
+  margen: { top: 10, right: 30, bottom: 30, left: 100 },
+  ancho: 800,
+  alto: 400
+};
 
 /**
- * Preprocesamiento y Modelado:
- * El API nos envía sólo 1 tipo de dato que es el precio actual de las criptomonedas.
- * A pesar de esto, podemos hacer cálculos matemáticos para producir una estructura de datos que nos permita darle sentido al cambio de precios que vamos a mostrar en la visualización.
+ * Inicialización de las gráficas
  */
-const monedas = [
-  {nombre: "bitcoin", precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: []}, 
-  {nombre: "ethereum", precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: []},
-  {nombre: "monero", precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: []},
-  {nombre: "litecoin", precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: []}
-];
+function crearGrafica(containerId) {
+  const { margen, ancho, alto } = configuracionGrafica;
+  const anchoReal = ancho - margen.left - margen.right;
+  const altoReal = alto - margen.top - margen.bottom;
 
-// Función que recibe los mensajes del Socket
-function procesarNuevoMensaje(mensaje) {
-  // Convertimos los datos de texto a formato JSON
-  var mensajeJson = JSON.parse(mensaje.data);
+  const svg = d3
+    .select(containerId)
+    .append('svg')
+    .attr('width', ancho)
+    .attr('height', alto)
+    .append('g')
+    .attr('transform', `translate(${margen.left},${margen.top})`);
 
-  // Iteramos sobre los valores del mensaje que vienen en parejas de "nombre": "precio"
-  for (var nombreMoneda in mensajeJson) {
-    // En el siguiente loop, pasamos por cada objeto que definimos en la variable "monedas" que contiene la nueva estructura de datos que queremos llenar.
-    for (var i = 0; i < monedas.length; i++) {
-      // objetoMoneda va a ser cada uno de los objetos del modelado, por ejemplo:
-      // cuando i = 0, objetoMoneda es: {nombre: "bitcoin", precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: []}
-      var objetoMoneda = monedas[i];
+  // Ejes
+  const x = d3.scaleTime().range([0, anchoReal]);
+  const y = d3.scaleLinear().range([altoReal, 0]);
 
-      // Comparamos el nombre de la moneda en nuestro modelo con el nombre de la moneda que cambió de valor y fue enviado por la API en el mensaje actual.
-      // Si coinciden, significa que podemos actualizar los datos de nuestro modelo para esa moneda
-      if (objetoMoneda.nombre === nombreMoneda) {
-        // Extraemos el precio actual que llegó en el mensaje y lo guardamos en una variable para usarla varias veces de ahora en adelante.
-        var nuevoPrecio = mensajeJson[nombreMoneda];
+  svg.append('g')
+    .attr('transform', `translate(0,${altoReal})`)
+    .attr('class', 'ejeX');
 
-        // En JavaScript, podemos insertar un nuevo elemento a un array usando push()
-        // Aquí estamos sumando una nueva entrada a los datos de la moneda que acaba de cambiar el precio.
-        // En nuestra estructura de modelado: {nombre: "bitcoin", precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: []}
-        // va a quedar guardada en el array "datos"
-        objetoMoneda.datos.push({
-          fecha: Date.now(), // Este va a ser nuestro eje X, usamos la fecha del presente ya que la aplicación funciona en tiempo real.
-          precio: nuevoPrecio, // El eje Y en la visualización va a ser el precio.
-        });
+  svg.append('g')
+    .attr('class', 'ejeY');
 
-        // Volviendo a la estructura: {nombre: "bitcoin", precioActual: null, precioMasAlto: null, precioMasBajo: null, datos: []}
-        // podemos cambiar directamente el precioActual de la moneda con el precio que acaba de llegar de la API.
-        objetoMoneda.precioActual = nuevoPrecio;
+  return { svg, x, y, anchoReal, altoReal };
+}
 
-        // Ahora hagamos algo más interesante, vamos a guardar el precio más alto al que ha llegado la moneda.
-        // La siguiente comparación revisa si el valor NO es "null" con: !objetoMoneda.precioMasAlto,
-        // O si el precio que acaba de llegar es mayor al precioMasAlto guardado en nuestro modelo.
-        if (!objetoMoneda.precioMasAlto || objetoMoneda.precioMasAlto < nuevoPrecio) {
-          // Si alguna de estas dos pruebas es verdadera, cambiamos el precioMasAlto en el modelo.
-          objetoMoneda.precioMasAlto = nuevoPrecio;
-        }
-        // Hacemos lo mismo para el precioMasBajo haciendo la comparación invertida.
-        if (!objetoMoneda.precioMasBajo || objetoMoneda.precioMasBajo > nuevoPrecio) {
-          objetoMoneda.precioMasBajo = nuevoPrecio;
-        }
+const grafica1 = crearGrafica('#modulo2');
+const grafica2 = crearGrafica('#modulo4');
 
-        // Para terminar, actualizamos la gráfica que tengamos seleccionada en el menú
-        if (nombreMoneda === menu.value) {
-          actualizar(monedas[i]);
-        }
+/**
+ * Conexión WebSocket y procesamiento de datos
+ */
+const coincapWS = new WebSocket('wss://ws.coincap.io/prices?assets=bitcoin,ethereum,monero,litecoin');
+const binanceWS = new WebSocket('wss://stream.binance.com:9443/ws');
+
+// Al abrir la conexión con Binance, enviamos el mensaje de suscripción
+binanceWS.onopen = function() {
+  const subscriptionMessage = {
+    method: "SUBSCRIBE",
+    params: [
+      "btcusdt@trade",
+      "ethusdt@trade",
+      "xmrusdt@trade",
+      "ltcusdt@trade"
+    ],
+    id: 1
+  };
+  binanceWS.send(JSON.stringify(subscriptionMessage));
+};
+
+function procesarMensajeCoinCap(mensaje) {
+  const mensajeJson = JSON.parse(mensaje.data);
+  contadorDatos++;
+  document.getElementById('contador-datos').innerText = `Datos recibidos: ${contadorDatos}`;
+
+  actualizarModelo(mensajeJson, monedasCoinCap, grafica1, 'contexto1', 'contexto2');
+}
+
+function procesarMensajeBinance(mensaje) {
+  const data = JSON.parse(mensaje.data);
+
+  // Verificar si es un mensaje de trade
+  if (!data.e || data.e !== 'trade') {
+    return;
+  }
+
+  contadorDatos2++;
+  document.getElementById('contador-datos-2').innerText = `Datos recibidos: ${contadorDatos2}`;
+
+  // Crear el objeto formateado para un solo par
+  const mensajeFormateado = {};
+
+  // Mapear el símbolo al nombre de la moneda
+  const simbolo = data.s.toLowerCase();
+  let nombreMoneda;
+
+  switch(simbolo) {
+    case 'btcusdt':
+      nombreMoneda = 'bitcoin';
+      break;
+    case 'ethusdt':
+      nombreMoneda = 'ethereum';
+      break;
+    case 'xmrusdt':
+      nombreMoneda = 'monero';
+      break;
+    case 'ltcusdt':
+      nombreMoneda = 'litecoin';
+      break;
+    default:
+      return;
+  }
+
+  mensajeFormateado[nombreMoneda] = parseFloat(data.p);
+
+  if (!isNaN(mensajeFormateado[nombreMoneda])) {
+    actualizarModelo(mensajeFormateado, monedasBinance, grafica2, 'contexto3', 'contexto4');
+  }
+}
+
+function actualizarModelo(mensajeJson, modeloMonedas, grafica, contextoId1, contextoId2) {
+  for (const nombreMoneda in mensajeJson) {
+    const moneda = modeloMonedas.find(m => m.nombre === nombreMoneda);
+    if (moneda) {
+      const nuevoPrecio = parseFloat(mensajeJson[nombreMoneda]);
+
+      if (isNaN(nuevoPrecio)) {
+        console.error('Precio inválido para', nombreMoneda, mensajeJson[nombreMoneda]);
+        continue;
+      }
+
+      moneda.datos.push({
+        fecha: Date.now(),
+        precio: nuevoPrecio
+      });
+
+      // Limitar el número de puntos de datos
+      if (moneda.datos.length > 100) {
+        moneda.datos = moneda.datos.slice(-100);
+      }
+
+      moneda.precioActual = nuevoPrecio;
+
+      if (!moneda.precioMasAlto || moneda.precioMasAlto < nuevoPrecio) {
+        moneda.precioMasAlto = nuevoPrecio;
+      }
+      if (!moneda.precioMasBajo || moneda.precioMasBajo > nuevoPrecio) {
+        moneda.precioMasBajo = nuevoPrecio;
+      }
+
+      if (nombreMoneda === menu.value) {
+        actualizarVisualizacion(moneda, grafica, contextoId1, contextoId2);
       }
     }
   }
 }
-/** FIN de Preprocesamiento y modelado. */
 
-/**
- * Visualización y textos dinámicos
- */
+function actualizarVisualizacion(moneda, grafica, contextoId1, contextoId2) {
+  const { svg, x, y, anchoReal, altoReal } = grafica;
 
-var contexto1 = document.getElementById('contexto1');
-var contexto2 = document.getElementById('contexto2');
+  // Actualizar textos
+  document.getElementById(contextoId1).innerText = 
+    `${moneda.nombre}: ${formatoUSD.format(moneda.precioActual)} USD`;
 
-var formatoUSD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const precioInicial = moneda.datos[0].precio;
+  const diferencia = Math.abs(moneda.precioActual - precioInicial);
+  document.getElementById(contextoId2).innerText = 
+    precioInicial < moneda.precioActual 
+      ? `subió +${formatoUSD.format(diferencia)}`
+      : `bajó -${formatoUSD.format(diferencia)}`;
 
+  // Actualizar gráfica
+  x.domain(d3.extent(moneda.datos, d => d.fecha));
+  y.domain([
+    d3.min(moneda.datos, d => d.precio),
+    d3.max(moneda.datos, d => d.precio)
+  ]);
 
-function actualizar(objetoMoneda) {
-  contexto1.innerText = "- " + menu.value + ": " + formatoUSD.format(objetoMoneda.precioActual) + " USD.";
+  svg.select('.ejeX')
+    .transition()
+    .duration(300)
+    .call(d3.axisBottom(x));
 
-  var precioInicial = objetoMoneda.datos[0].precio;
+  svg.select('.ejeY')
+    .transition()
+    .duration(300)
+    .call(d3.axisLeft(y));
 
-  if (precioInicial < objetoMoneda.precioActual) {
-    var diferencia = objetoMoneda.precioActual - precioInicial;
-    contexto2.innerText = "subió + " + formatoUSD.format(diferencia);
-  } else if (precioInicial > objetoMoneda.precioActual) {
-    var diferencia = precioInicial - objetoMoneda.precioActual;
-    contexto2.innerText = "bajó - " + formatoUSD.format(diferencia);
-  } else {
-    contexto2.innerText = "igual = 0";
-  }
+  const linea = svg.selectAll('.linea').data([moneda.datos]);
+
+  linea
+    .join('path')
+    .attr('class', 'linea')
+    .transition()
+    .duration(300)
+    .attr('d', d3.line()
+      .x(d => x(d.fecha))
+      .y(d => y(d.precio))
+    )
+    .attr('fill', 'none')
+    .attr('stroke', '#42b3f5')
+    .attr('stroke-width', 2.5);
 }
 
-// FIN de Visualización y textos dinámicos
+/**
+ * Actualización de fecha y hora
+ */
+function actualizarFechaHora() {
+  const ahora = new Date();
+  const opciones = { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric',
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit'
+  };
+  const fechaFormateada = ahora.toLocaleDateString('es-ES', opciones);
+  document.getElementById('fecha-actual').innerText = fechaFormateada;
+  document.getElementById('fecha-actual-2').innerText = fechaFormateada;
+}
+
+// Configurar los WebSockets
+coincapWS.onmessage = procesarMensajeCoinCap;
+binanceWS.onmessage = procesarMensajeBinance;
+
+coincapWS.onerror = (error) => {
+  console.error('Error en CoinCap WebSocket:', error);
+};
+
+binanceWS.onerror = (error) => {
+  console.error('Error en Binance WebSocket:', error);
+};
+
+coincapWS.onclose = () => {
+  console.log('CoinCap WebSocket cerrado. Intentando reconectar...');
+  setTimeout(() => {
+    window.location.reload();
+  }, 5000);
+};
+
+binanceWS.onclose = () => {
+  console.log('Binance WebSocket cerrado. Intentando reconectar...');
+  setTimeout(() => {
+    window.location.reload();
+  }, 5000);
+};
+
+// Iniciar actualización de fecha y hora
+setInterval(actualizarFechaHora, 1000);
+actualizarFechaHora();
 
 /**
- * MENÚ
+ * Manejo del menú
  */
-var menu = document.getElementById("menuMonedas");
-
+const menu = document.getElementById('menuMonedas');
 menu.onchange = function() {
-  var objetoMoneda = monedas.find(function(obj) { return obj.nombre === menu.value });
-  actualizar(objetoMoneda);
-}
-// ----- FIN MENÚ ----
+  const monedaCoinCap = monedasCoinCap.find(m => m.nombre === menu.value);
+  const monedaBinance = monedasBinance.find(m => m.nombre === menu.value);
+
+  if (monedaCoinCap) {
+    actualizarVisualizacion(monedaCoinCap, grafica1, 'contexto1', 'contexto2');
+  }
+  if (monedaBinance) {
+    actualizarVisualizacion(monedaBinance, grafica2, 'contexto3', 'contexto4');
+  }
+};

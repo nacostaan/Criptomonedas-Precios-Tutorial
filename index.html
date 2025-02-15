@@ -1,37 +1,53 @@
 <!DOCTYPE html>
 <html>
-
-<!-- Hola! Esto es un comentario en HTML -->
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width">
-  <!-- Este Título lo deben cambiar -->
-	<title>Título para bookmarks</title>
-	<link href="style.css" rel="stylesheet" type="text/css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Comparación de Precios de Criptomonedas</title>
+  <link href="style.css" rel="stylesheet" type="text/css" />
 </head>
-
 <body>
-  <!-- El título que aparece en la página -->
-	<h1 id="titulo">Título</h1>
+  <h1 id="titulo">Comparación de Precios de CriptoMonedas</h1>
 
-	<select name="monedas" id="menuMonedas">
+  <select name="monedas" id="menuMonedas">
     <option value="bitcoin" selected="selected">Bitcoin</option>
     <option value="ethereum">Ethereum</option>
     <option value="monero">Monero</option>
     <option value="litecoin">Litecoin</option>
   </select>
 
-    <div id="modulo1">
-      <p id="contexto1"></p>
-      <p id="contexto2"></p>
-    </div>
-    <div id="modulo2"></div>
-    <div id="descripcion">
-      <p>Párrafo 1 ....</p>
-      <p>Párrafo 2 ....</p>
+  <div class="container">
+    <div class="visualization-module">
+      <h2>Fuente: CoinCap</h2>
+      <div id="modulo1">
+        <p id="contexto1"></p>
+        <p id="contexto2"></p>
+        <p id="fecha-actual"></p>
+        <p id="contador-datos"></p>
+        <p class="explicacion">Visualización de precios en tiempo real desde CoinCap API</p>
+      </div>
+      <div id="modulo2"></div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/d3.min.js"></script>
-    <script src="script.js"></script>
-  </body>
+    <div class="visualization-module">
+      <h2>Fuente: Binance</h2>
+      <div id="modulo3">
+        <p id="contexto3"></p>
+        <p id="contexto4"></p>
+        <p id="fecha-actual-2"></p>
+        <p id="contador-datos-2"></p>
+        <p class="explicacion">Visualización de precios en tiempo real desde Binance API</p>
+      </div>
+      <div id="modulo4"></div>
+    </div>
+  </div>
+
+  <div id="descripcion">
+    <p>Las criptomonedas han transformado la forma en que entendemos el valor y las transacciones en la era digital. Su precio, en constante fluctuación, refleja no solo la oferta y la demanda, sino también la confianza de los inversionistas y los cambios en el mercado global.</p>
+    <p>A través de esta visualización comparativa, podrás observar las diferencias de precios entre distintas fuentes de datos, lo que te permitirá tener una visión más completa del mercado de criptomonedas.</p>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/d3.min.js"></script>
+  <script src="script.js"></script>
+</body>
 </html>
